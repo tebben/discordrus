@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -138,27 +139,34 @@ func (hook *Hook) parseToJson(entry *logrus.Entry) (*[]byte, error) {
 		}
 	}
 
+	// Sort entry.Data by key first otherwise fields are random displayed in a Discord message
+	keys := make([]string, 0)
+	for k := range entry.Data {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
 	// Add fields to embed
 	counter := 0
-	for name, value := range entry.Data {
+	for _, k := range keys {
 		// Ensure that the maximum field number is not exceeded
 		if counter > maxFieldNum {
 			break
 		}
 
 		// Make value a string
-		valueStr := fmt.Sprintf("%v", value)
+		valueStr := fmt.Sprintf("%v", entry.Data[k])
 
 		// Truncate names and values which are too long
-		if len(name) > maxFieldNameChars {
-			name = name[:maxFieldNameChars]
+		if len(k) > maxFieldNameChars {
+			k = k[:maxFieldNameChars]
 		}
 		if len(valueStr) > maxFieldValueChars {
 			valueStr = valueStr[:maxFieldValueChars]
 		}
 
 		var embedField = map[string]interface{}{
-			"name":   name,
+			"name":   k,
 			"value":  valueStr,
 			"inline": !hook.Opts.DisableInlineFields,
 		}
